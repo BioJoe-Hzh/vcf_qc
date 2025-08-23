@@ -71,58 +71,9 @@ Genotype level:
 * genotype_gq_vs_depth.png
 * genotype_vaf_vs_depth_het.png / genotype_alt_count_vs_depth_het.png
 
-### Python API Example
-```python
-from vcf_qc.io import SimpleVCFReader
-from vcf_qc.metrics.sample_metrics import compute_sample_metrics
-from vcf_qc.plot.sample_plots import plot_missing_rate_per_sample
-
-reader = SimpleVCFReader("input.vcf.gz", max_records=50000)
-df = compute_sample_metrics(reader)
-plot_missing_rate_per_sample(dict(zip(df.Sample, df.MissingRate)), output_path="missing.png")
-```
-
-### Quick Version Check
-```bash
-python -c "import vcf_qc; print(vcf_qc.__version__)"
-```
-
-### Publish to GitHub & Tag
-1. Initialize git (if not already):
-    ```bash
-    git init
-    git add .
-    git commit -m "feat: initial public release v0.1.0"
-    ```
-2. Create a public GitHub repository named `vcf_qc` (empty).
-3. Add remote & push:
-    ```bash
-    git remote add origin git@github.com:<USERNAME>/vcf_qc.git
-    git branch -M main
-    git push -u origin main
-    ```
-4. Create tag:
-    ```bash
-    git tag -a v0.1.0 -m "vcf_qc 0.1.0 initial release"
-    git push origin v0.1.0
-    ```
-
-### (Optional) Publish to PyPI
-```bash
-python -m pip install --upgrade build twine
-python -m build
-twine upload dist/*
-```
 
 ### License
 MIT License (see LICENSE).
-
-### Contributing (Short)
-* Fork & PR
-* Style: ruff / black (future addition)
-* New plots: follow existing `plot_*` naming + docstring.
-
-Issues & PRs welcome.
 
 ### Author / Contact
 Zihao Huang  
