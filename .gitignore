@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+.Python
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+*.egg
+
+# VS Code / IDE
+.vscode/
+.idea/
+
+# Environments
+env/
+venv/
+.env
+
+# Jupyter
+*.ipynb_checkpoints/
+
+# Logs / temp
+*.log
+*.tmp
+*.bak
+
+# OS
+.DS_Store
+
+# Generated plots / examples (optional add more patterns)
+sample_plots_auto/
+plot_examples/
