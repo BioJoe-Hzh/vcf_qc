@@ -3,7 +3,7 @@
 Light‑weight QC metrics and plots for small to medium VCF datasets. Provides sample / site / genotype level metrics, histograms, joint scatter plots, allele composition, smart tail trimming, and multi‑process rendering.
 
 ### Key Features
-* Streaming line‑by‑line VCF reader (pure Python; no cyvcf2 dependency).
+* Streaming line‑by‑line VCF reader.
 * Sample level: missing rate, mean depth, heterozygosity ratio (Het/HomAlt), optional automatic or forced k clustering (scikit‑learn optional).
 * Site level: QUAL, MeanDepth, QD, MAC, MAF (second‑most allele frequency), MissingRate, reconstructed multi‑allelic AlleleCount pie chart.
 * Genotype level: GQ, per‑genotype Depth, VAF (multi‑allelic aware), ALT read count, heterozygous‑only scatter panels.
@@ -76,6 +76,6 @@ Genotype level:
 MIT License (see LICENSE).
 
 ### Author / Contact
-Zihao Huang  
+Zihao Huang (idea and code structure) and Copilot (coding) 
 Department of Genetics, University of Cambridge  
 Email: zh384@cam.ac.uk  
