@@ -33,11 +33,6 @@ With clustering extra:
 pip install -e .[cluster]
 ```
 
-Once released on PyPI:
-```bash
-pip install vcf_qc
-```
-
 ### Command Line Usage
 ```
 vcf_qc sample   --vcf input.vcf.gz --out sample_qc   --threads 4
@@ -66,6 +61,7 @@ Site level:
 * site_missing_rate_distribution.png
 * site_allele_count_pie.png
 
+
 Genotype level:
 * genotype_gq_distribution.png / genotype_depth_distribution.png
 * genotype_gq_vs_depth.png
@@ -74,6 +70,7 @@ Genotype level:
 
 ### License
 MIT License (see LICENSE).
+
 
 ### Author / Contact
 Zihao Huang (idea and code structure) and Copilot (coding)	
