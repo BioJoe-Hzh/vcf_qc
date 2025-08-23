@@ -76,6 +76,6 @@ Genotype level:
 MIT License (see LICENSE).
 
 ### Author / Contact
-Zihao Huang (idea and code structure) and Copilot (coding) 
-Department of Genetics, University of Cambridge  
+Zihao Huang (idea and code structure) and Copilot (coding)	
+Department of Genetics, University of Cambridge	
 Email: zh384@cam.ac.uk  
