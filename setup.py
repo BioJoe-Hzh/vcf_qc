@@ -1,4 +1,5 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
-# Fallback for legacy installers (modern builds use pyproject.toml)
-setup()
+setup(
+    packages=find_packages()
+)

@@ -37,12 +37,10 @@ dev = [
 vcf_qc = "vcf_qc.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/yourusername/vcf_qc"
-Source = "https://github.com/yourusername/vcf_qc"
-Issues = "https://github.com/yourusername/vcf_qc/issues"
+Homepage = "https://github.com/BioJoe-Hzh/vcf_qc/tree/main/vcf_qc"
 
-[tool.setuptools]
-packages = ["vcf_qc"]
+[tool.setuptools.packages.find]
+where = ["."]
 
 [tool.setuptools.package-data]
 vcf_qc = ["py.typed"]
