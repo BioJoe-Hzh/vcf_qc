@@ -41,6 +41,8 @@ Homepage = "https://github.com/BioJoe-Hzh/vcf_qc/tree/main/vcf_qc"
 
 [tool.setuptools.packages.find]
 where = ["."]
+[tool.setuptools.package-data]
+vcf_qc = ["py.typed"]
 
 [tool.setuptools.package-data]
 vcf_qc = ["py.typed"]
