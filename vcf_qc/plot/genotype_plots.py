@@ -34,12 +34,13 @@ def plot_gq_distribution_genotype(
 	output_path: Optional[str] = None,
 	title: str = "Genotype GQ distribution",
 	bins: int = 60,
-	smart_cutoff: float = 99.5,
+	smart_cutoff: float = 99.0,
 	enable_smart_cutoff: bool = True,
 ) -> Optional[plt.Figure]:
 	"""4.8 Histogram of genotype GQ values."""
-	# Use fixed integer bins 1..100 (100 bins of width 1) regardless of user 'bins' parameter.
-	fixed_bins = np.arange(1, 102)  # edges 1..101 create 1..100 bins
+	# Use fixed integer bins 1..99 (99 bins of width 1) regardless of user 'bins' parameter.
+	# This ensures compliance with VCF standard where GQ should not exceed 99.
+	fixed_bins = np.arange(1, 101)  # edges 1..100 create 1..99 bins
 	return hist_plot(
 		gq,
 		output_path=output_path,
@@ -83,7 +84,7 @@ def plot_gq_vs_depth_genotype(
 	title: str = "GQ vs depth (genotype level)",
 	gq_col: str = "GQ",
 	depth_col: str = "Depth",
-	smart_cutoff: float = 99.5,
+	smart_cutoff: float = 99.0,
 	enable_smart_cutoff: bool = True,
 	apply_on: str = "both",
 	# Distinct high-contrast colors

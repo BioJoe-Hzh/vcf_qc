@@ -103,7 +103,8 @@ def cmd_sample(args: argparse.Namespace) -> None:
 
 	# Second pass reader for GQ vs depth long table (needs fresh iterator)
 	reader_gq = SimpleVCFReader(args.vcf, max_records=args.max_site)
-	gq_df = gq_depth_long_table(reader_gq)
+	compute_gq = not getattr(args, 'no_compute_gq_from_pl', False)
+	gq_df = gq_depth_long_table(reader_gq, compute_gq_from_pl=compute_gq)
 	if not gq_df.empty:
 		plot_gq_boxplot_vs_depth(gq_df, output_path=str(outdir / 'gq_boxplot_vs_depth.png'))
 	print(f"Sample-level plots written to {outdir}")
@@ -159,7 +160,8 @@ def cmd_genotype(args: argparse.Namespace) -> None:
 
 	reader = SimpleVCFReader(args.vcf, max_records=args.max_site)
 	# Collect genotype records for all samples across the (site-limited) reader
-	records = list(reader.iterate_genotypes())  # type: ignore
+	compute_gq = not getattr(args, 'no_compute_gq_from_pl', False)
+	records = list(reader.iterate_genotypes(compute_gq_from_pl=compute_gq))  # type: ignore
 	if not records:
 		print("No genotype records found.")
 		return
@@ -214,6 +216,7 @@ def build_parser() -> argparse.ArgumentParser:
 	sp.add_argument("--threads", type=int, default=1, help="Parallel plot generation processes")
 	sp.add_argument('--cluster-k', type=int, default=None, help='Force specific k for depth/het clustering')
 	sp.add_argument('--export-clusters', action='store_true', help='Export cluster assignment TSVs')
+	sp.add_argument("--no-compute-gq-from-pl", action="store_true", help="Disable automatic GQ computation from PL when GQ is missing")
 	sp.set_defaults(func=cmd_sample)
 
 	sp2 = sub.add_parser("site", help="Site-level metrics and plots")
@@ -233,6 +236,7 @@ def build_parser() -> argparse.ArgumentParser:
 	sp3.add_argument("--out", required=True, help="Output directory for plots")
 	sp3.add_argument("--max-site", type=int, default=100000, help="Limit number of variant sites parsed (debug)")
 	sp3.add_argument("--threads", type=int, default=1, help="Parallel plot generation processes")
+	sp3.add_argument("--no-compute-gq-from-pl", action="store_true", help="Disable automatic GQ computation from PL when GQ is missing")
 	sp3.set_defaults(func=cmd_genotype)
 	return p
 

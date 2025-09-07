@@ -85,18 +85,53 @@ def pl_to_gq(pl_vals: List[int]) -> Optional[int]:
     """Convert a list of PL (phred-scaled likelihoods) into an approximate GQ.
 
     Simple heuristic: GQ = difference between smallest PL and second-smallest PL.
-    Returns None for empty input.
+    According to VCF format specification, GQ should be capped at 99.
+    Returns None for empty input or if fewer than 2 values.
     """
-    if not pl_vals:
+    if not pl_vals or len(pl_vals) < 2:
         return None
     try:
         sorted_pl = sorted(pl_vals)
-        if len(sorted_pl) == 1:
-            return 0
         gq = sorted_pl[1] - sorted_pl[0]
-        return int(gq)
+        if gq < 0:
+            gq = 0
+        return int(min(gq, 99))  # Cap GQ at 99 per VCF specification
     except Exception:
         return None
+
+
+def gt_is_missing(gt: Optional[str]) -> bool:
+    """Check if a genotype is missing or half-missing.
+    
+    Treat '.', './.', '.|.', '0/.', './1', '0|.' etc. as missing.
+    This follows the VCF specification for missing genotypes.
+    """
+    if gt is None:
+        return True
+    if gt == '.':
+        return True
+    return '.' in gt
+
+
+def parse_pl_robust(pl: Optional[str]) -> List[int]:
+    """Parse PL field robustly, handling missing and malformed values.
+    
+    Returns empty list if PL is missing or contains no valid values.
+    Individual missing values (.) within the PL list are skipped.
+    """
+    if not pl or pl == '.':
+        return []
+    
+    out: List[int] = []
+    for tok in pl.split(','):
+        tok = tok.strip()
+        if not tok or tok == '.':
+            continue  # Skip missing individual values
+        try:
+            out.append(int(tok))
+        except (ValueError, TypeError):
+            continue  # Skip malformed values
+    return out
 
 
 def normalize_chrom(chrom: Optional[str]) -> str:
@@ -119,5 +154,7 @@ __all__ = [
     "extract_ad_dp",
     "vaf_from_ad",
     "pl_to_gq",
+    "gt_is_missing",
+    "parse_pl_robust",
     "normalize_chrom",
 ]

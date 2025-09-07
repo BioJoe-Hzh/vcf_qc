@@ -470,6 +470,7 @@ def plot_gq_boxplot_vs_depth(
 	title: str = "GQ distribution across sample mean depth bins",
 	depth_col: str = "Depth",
 	gq_col: str = "GQ",
+	max_gq_display: int = 99,
 	figsize: Tuple[int, int] = (12, 5),
 	violin_color: str = "#8888CC",
 	bar_color: str = "#444444",
@@ -479,30 +480,37 @@ def plot_gq_boxplot_vs_depth(
 	Fixes over-counting by assigning each sample to exactly one depth bin based on
 	its mean depth (across genotypes). Secondary bar axis shows number of samples per bin.
 	Grid lines removed for cleaner view.
+	
+	Args:
+		max_gq_display: Maximum GQ value to display in the plot (default 99 for VCF standard compliance).
 	"""
 	for col in (depth_col, gq_col):
 		if col not in data.columns:
 			raise ValueError(f"Column '{col}' not in DataFrame")
+	
+	# Filter data to respect GQ display limit
+	plot_data = data.copy()
+	if max_gq_display and gq_col in plot_data.columns:
+		plot_data = plot_data[plot_data[gq_col] <= max_gq_display]
 	set_plot_style()
 	sns.set_style("white")
 	# Compute mean depth per sample then map sample -> bin
-	if 'Sample' in data.columns:
+	if 'Sample' in plot_data.columns:
 		sample_mean_depth = (
-			data.loc[data[depth_col] > 0].groupby('Sample')[depth_col].mean().to_dict()
+			plot_data.loc[plot_data[depth_col] > 0].groupby('Sample')[depth_col].mean().to_dict()
 		)
-		data = data.copy()
-		data['SampleMeanDepth'] = data['Sample'].map(sample_mean_depth).fillna(0)
-		bin_values = data['SampleMeanDepth']
+		plot_data['SampleMeanDepth'] = plot_data['Sample'].map(sample_mean_depth).fillna(0)
+		bin_values = plot_data['SampleMeanDepth']
 	else:
-		bin_values = data[depth_col]
+		bin_values = plot_data[depth_col]
 	bins = [0, 1, 3, 5, 10, 15, 20, 25, 30, 35, float('inf')]
 	labels = ["0-1", "1-3", "3-5", "5-10", "10-15", "15-20", "20-25", "25-30", "30-35", ">35"]
 	bidx = np.digitize(bin_values, bins, right=False) - 1
-	data['DepthBin'] = [labels[i] if 0 <= i < len(labels) else labels[-1] for i in bidx]
+	plot_data['DepthBin'] = [labels[i] if 0 <= i < len(labels) else labels[-1] for i in bidx]
 	order = labels
 	fig, ax = plt.subplots(figsize=figsize)
 	sns.violinplot(
-		data=data,
+		data=plot_data,
 		x='DepthBin',
 		y=gq_col,
 		order=order,
@@ -515,11 +523,11 @@ def plot_gq_boxplot_vs_depth(
 	ax.set_ylabel("GQ")
 	ax.set_title(title)
 	# Counts of samples per bin
-	if 'Sample' in data.columns:
-		sample_bin = data[['Sample', 'DepthBin']].drop_duplicates()
+	if 'Sample' in plot_data.columns:
+		sample_bin = plot_data[['Sample', 'DepthBin']].drop_duplicates()
 		counts = sample_bin.groupby('DepthBin')['Sample'].nunique().reindex(order).fillna(0).astype(int)
 	else:
-		counts = data.groupby('DepthBin')[gq_col].count().reindex(order).fillna(0).astype(int)
+		counts = plot_data.groupby('DepthBin')[gq_col].count().reindex(order).fillna(0).astype(int)
 	ax2 = ax.twinx()
 	ax2.bar(order, counts, alpha=0.25, color=bar_color)
 	ax2.set_ylabel("Sample count")

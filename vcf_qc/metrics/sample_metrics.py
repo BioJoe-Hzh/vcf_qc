@@ -52,14 +52,18 @@ def compute_sample_metrics(reader: SimpleVCFReader) -> pd.DataFrame:
 	return pd.DataFrame(rows)
 
 
-def gq_depth_long_table(reader: SimpleVCFReader) -> pd.DataFrame:
+def gq_depth_long_table(reader: SimpleVCFReader, compute_gq_from_pl: bool = False) -> pd.DataFrame:
 	"""Return long-form table with GQ and Depth per sample genotype.
 
 	Columns: Sample, GQ, Depth
+	
+	Args:
+		reader: VCF reader instance
+		compute_gq_from_pl: If True, compute GQ from PL when GQ is missing
 	"""
 	records = [
 		{"Sample": s, "GQ": gq, "Depth": dp}
-		for s, gq, dp in reader.iterate_gq_depth()
+		for s, gq, dp in reader.iterate_gq_depth(compute_gq_from_pl=compute_gq_from_pl)
 	]
 	return pd.DataFrame(records)
 

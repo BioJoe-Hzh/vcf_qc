@@ -13,6 +13,8 @@ from dataclasses import dataclass
 from typing import List, Dict, Iterator, Optional, Tuple, Iterable
 import gzip
 
+from ..utils import pl_to_gq
+
 
 @dataclass
 class GenotypeRecord:
@@ -153,26 +155,69 @@ class SimpleVCFReader:
 					depth_count[sample] += 1
 		return total_calls, missing_calls, het_calls, hom_alt_calls, depth_sum, depth_count
 
-	def iterate_gq_depth(self) -> Iterator[Tuple[str, int, int]]:
+	def iterate_gq_depth(self, compute_gq_from_pl: bool = False) -> Iterator[Tuple[str, int, int]]:
 		"""Yield (sample, GQ, DP) triples for genotypes with values.
 
 		Useful for constructing distribution plots (GQ vs depth boxplots).
+		
+		Args:
+			compute_gq_from_pl: If True, compute GQ from PL when GQ is missing.
 		"""
 		if not self.samples:
 			for _ in self.parse():
 				break
+		
+		compute_count = 0
 		for rec in self.parse():
 			for i, sample in enumerate(self.samples):
+				# Get raw values
+				gt = rec.extract_sample_value(i, 'GT')
 				gq = rec.extract_sample_value(i, 'GQ')
 				dp = rec.extract_sample_value(i, 'DP')
+				
+				# Skip missing genotypes (following VCF standard)
+				from ..utils import gt_is_missing
+				if gt_is_missing(gt):
+					continue
+				
+				# Try to get or compute GQ
+				gq_val = None
 				if gq and gq.isdigit():
 					gq_val = int(gq)
-				else:
+				elif compute_gq_from_pl and gq in (None, '.', ''):
+					# Try to compute GQ from PL
+					pl_str = rec.extract_sample_value(i, 'PL')
+					if pl_str and pl_str not in (None, '.', ''):
+						try:
+							from ..utils import parse_pl_robust, pl_to_gq
+							pl_values = parse_pl_robust(pl_str)
+							if pl_values:
+								gq_val = pl_to_gq(pl_values)
+								if gq_val is not None:
+									compute_count += 1
+									# Adaptive progress display: start with 1K, then increase interval
+									if compute_count <= 10000:
+										interval = 1000
+									elif compute_count <= 100000:
+										interval = 10000
+									else:
+										interval = 50000
+									
+									if compute_count % interval == 0:
+										print(f"[INFO] Computing GQ from PL: {compute_count:,} genotypes processed...")
+						except Exception:
+							continue
+				
+				# Skip if we couldn't get or compute GQ
+				if gq_val is None:
 					continue
+					
+				# Parse depth
 				if dp and dp.isdigit():
 					dp_val = int(dp)
 				else:
 					dp_val = 0
+					
 				yield sample, gq_val, dp_val
 
 	# -- site level -------------------------------------------------------
@@ -276,7 +321,7 @@ class SimpleVCFReader:
 			}
 
 	# -- genotype level ---------------------------------------------------
-	def iterate_genotypes(self) -> Iterator[Dict[str, object]]:
+	def iterate_genotypes(self, compute_gq_from_pl: bool = False) -> Iterator[Dict[str, object]]:
 		"""Yield per-genotype dict with counts suitable for depth/GQ/VAF plots.
 
 		If AD (allele depth) is present: AD=ref,alt; compute ALT_Count, REF_Count and VAF.
@@ -286,18 +331,61 @@ class SimpleVCFReader:
 		This yields a "genotype allele fraction" rather than the proportion of *all* alt reads at the site.
 		If you prefer denominator = sum(all AD) you can adapt easily.
 
+		Args:
+			compute_gq_from_pl: If True, compute GQ from PL when GQ is missing (slower).
+
 		Else (no AD) VAF cannot be derived reliably; we leave it as None.
 		"""
 		if not self.samples:
 			for _ in self.parse():
 				break
+		
+		# Track how many GQ values were computed from PL
+		gq_computed_from_pl = 0
+		total_genotypes_processed = 0
+		
 		for rec in self.parse():
 			for idx, sample in enumerate(self.samples):
+				total_genotypes_processed += 1
+				gt = rec.extract_sample_value(idx, 'GT')
 				gq = rec.extract_sample_value(idx, 'GQ')
 				dp = rec.extract_sample_value(idx, 'DP')
-				gt = rec.extract_sample_value(idx, 'GT')
 				ad = rec.extract_sample_value(idx, 'AD')
-				if not (gq and gq.isdigit()):
+				pl = rec.extract_sample_value(idx, 'PL')
+				
+				# Skip missing genotypes (following VCF standard)
+				from ..utils import gt_is_missing
+				if gt_is_missing(gt):
+					continue
+				
+				# Try to get GQ, or compute from PL if enabled and not available
+				gq_val = None
+				if gq and gq.isdigit():
+					gq_val = int(gq)
+				elif compute_gq_from_pl and pl:
+					# Try to compute GQ from PL using robust parsing
+					try:
+						from ..utils import parse_pl_robust, pl_to_gq
+						pl_vals = parse_pl_robust(pl)
+						if pl_vals:
+							gq_val = pl_to_gq(pl_vals)
+							if gq_val is not None:
+								gq_computed_from_pl += 1
+								# Adaptive progress display: start with 1K, then increase interval
+								if gq_computed_from_pl <= 10000:
+									interval = 1000
+								elif gq_computed_from_pl <= 100000:
+									interval = 10000
+								else:
+									interval = 50000
+								
+								if gq_computed_from_pl % interval == 0:
+									print(f"[INFO] Computing GQ from PL: {gq_computed_from_pl:,} genotypes processed...")
+					except Exception:
+						pass
+				
+				# Skip if we couldn't get or compute GQ
+				if gq_val is None:
 					continue
 				depth_val = int(dp) if dp and dp.isdigit() else 0
 				alt_count: Optional[int] = None
@@ -345,7 +433,7 @@ class SimpleVCFReader:
 				'Sample': sample,
 				'Chrom': rec.chrom,
 				'Pos': int(rec.pos),
-				'GQ': int(gq),
+				'GQ': gq_val,
 				'Depth': depth_val,
 				'ALT_Count': alt_count,
 				'REF_Count': ref_count,
