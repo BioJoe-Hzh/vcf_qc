@@ -43,6 +43,7 @@ def plot_qual_distribution(
 	logx: bool = False,
 	smart_cutoff: float = 99.5,
 	enable_smart_cutoff: bool = True,
+	use_smart_cutoff: bool = True,
 	focus_pct: Optional[float] = None,
 ) -> Optional[plt.Figure]:
 	"""4.5 Histogram of QUAL values for sites."""
@@ -64,7 +65,7 @@ def plot_qual_distribution(
 		logx=logx,
 		color="#355C7D",
 		smart_cutoff=smart_cutoff,
-		enable_smart_cutoff=enable_smart_cutoff,
+		enable_smart_cutoff=enable_smart_cutoff and use_smart_cutoff,
 	)
 
 
@@ -77,6 +78,7 @@ def plot_site_mean_depth_distribution(
 	logx: bool = False,
 	smart_cutoff: float = 99.5,
 	enable_smart_cutoff: bool = True,
+	use_smart_cutoff: bool = True,
 ) -> Optional[plt.Figure]:
 	"""4.6 Histogram of site mean depth values."""
 	return hist_plot(
@@ -88,7 +90,7 @@ def plot_site_mean_depth_distribution(
 		logx=logx,
 		color="#2A9D8F",
 		smart_cutoff=smart_cutoff,
-		enable_smart_cutoff=enable_smart_cutoff,
+		enable_smart_cutoff=enable_smart_cutoff and use_smart_cutoff,
 	)
 
 
@@ -99,15 +101,33 @@ def plot_qual_vs_mean_depth(
 	title: str = "QUAL vs mean depth",
 	qual_col: str = "QUAL",
 	depth_col: str = "MeanDepth",
+	use_smart_cutoff: bool = True,
 ) -> Optional[plt.Figure]:
 	"""Scatter QUAL vs mean depth (separate from QD distribution)."""
 	for c in (qual_col, depth_col):
 		if c not in data.columns:
 			raise ValueError(f"Missing required column '{c}'")
+	
+	# Apply smart cutoff if enabled (similar to joint_scatter logic)
+	plot_data = data.copy()
+	cutoff_note = ""
+	if use_smart_cutoff and len(plot_data) > 0:
+		# Apply 99.5th percentile cutoff for both dimensions
+		qual_vals = plot_data[qual_col].dropna()
+		depth_vals = plot_data[depth_col].dropna()
+		if len(qual_vals) > 0 and len(depth_vals) > 0:
+			qual_cutoff = np.percentile(qual_vals, 99.5)
+			depth_cutoff = np.percentile(depth_vals, 99.5)
+			plot_data = plot_data[
+				(plot_data[qual_col] <= qual_cutoff) & 
+				(plot_data[depth_col] <= depth_cutoff)
+			]
+			cutoff_note = f" (smart cutoff applied)"
+	
 	set_plot_style()
 	fig, ax = plt.subplots(figsize=(7, 5))
 	sns.scatterplot(
-		data=data,
+		data=plot_data,
 		x=depth_col,
 		y=qual_col,
 		s=10,
@@ -118,7 +138,7 @@ def plot_qual_vs_mean_depth(
 	)
 	ax.set_xlabel("Mean depth")
 	ax.set_ylabel("QUAL")
-	ax.set_title(title)
+	ax.set_title(title + cutoff_note)
 	fig.tight_layout()
 	return save_figure(fig, output_path)
 
@@ -131,6 +151,7 @@ def plot_qd_distribution(
 	bins: int = 60,
 	smart_cutoff: float = 99.5,
 	enable_smart_cutoff: bool = True,
+	use_smart_cutoff: bool = True,
 	focus_pct: Optional[float] = None,
 ) -> Optional[plt.Figure]:
 	"""Histogram of QD values."""
@@ -151,7 +172,7 @@ def plot_qd_distribution(
 		bins=bins,
 		color="#E76F51",
 		smart_cutoff=smart_cutoff,
-		enable_smart_cutoff=enable_smart_cutoff,
+		enable_smart_cutoff=enable_smart_cutoff and use_smart_cutoff,
 	)
 
 def plot_minor_allele_count_vs_depth(
@@ -163,6 +184,7 @@ def plot_minor_allele_count_vs_depth(
 	depth_col: str = "MeanDepth",
 	smart_cutoff: float = 99.5,
 	enable_smart_cutoff: bool = True,
+	use_smart_cutoff: bool = True,
 	apply_on: str = "both",
 ) -> Optional[plt.Figure]:
 	"""4.13 Joint scatter of minor allele count vs site depth."""
@@ -178,7 +200,7 @@ def plot_minor_allele_count_vs_depth(
 		ylabel="Minor allele count",
 		color="#1D3557",
 		smart_cutoff=smart_cutoff,
-		enable_smart_cutoff=enable_smart_cutoff,
+		enable_smart_cutoff=enable_smart_cutoff and use_smart_cutoff,
 		apply_on=apply_on,
 	)
 
@@ -191,6 +213,7 @@ def plot_minor_allele_freq_vs_depth(
 	depth_col: str = "MeanDepth",
 	smart_cutoff: float = 99.5,
 	enable_smart_cutoff: bool = True,
+	use_smart_cutoff: bool = True,
 	apply_on: str = "both",
 ) -> Optional[plt.Figure]:
 	"""4.14 Joint scatter of minor allele frequency vs site depth."""
@@ -206,7 +229,7 @@ def plot_minor_allele_freq_vs_depth(
 		ylabel="Minor allele frequency",
 		color="#457B9D",
 		smart_cutoff=smart_cutoff,
-		enable_smart_cutoff=enable_smart_cutoff,
+		enable_smart_cutoff=enable_smart_cutoff and use_smart_cutoff,
 		apply_on=apply_on,
 	)
 
@@ -216,25 +239,69 @@ def plot_site_missing_rate_distribution(
 	*,
 	output_path: Optional[str] = None,
 	title: str = "Missing rate distribution (site level)",
-	bins: int = 60,
-	smart_cutoff: float = 99.5,
+	bins: str = "auto",
+	smart_cutoff: float = 99.9,
 	enable_smart_cutoff: bool = True,
+	use_smart_cutoff: bool = True,
 ) -> Optional[plt.Figure]:
-	"""4.15 Histogram of site-level missing rates after genotype setting."""
+	"""4.15 Histogram of site-level missing rates after genotype setting with fixed 0-1 range."""
 	if isinstance(missing_rates, dict):
 		values = list(missing_rates.values())
 	else:
 		values = missing_rates
-	return hist_plot(
-		values,
-		output_path=output_path,
-		title=title,
-		xlabel="Missing rate",
-		bins=bins,
-		color="#BC4B51",
-		smart_cutoff=smart_cutoff,
-		enable_smart_cutoff=enable_smart_cutoff,
-	)
+	
+	# Convert to numpy array and remove NaN values
+	arr = np.asarray(values, dtype=float)
+	mask = ~np.isnan(arr)
+	orig_min = float(arr[mask].min()) if mask.any() else 0.0
+	orig_max = float(arr[mask].max()) if mask.any() else 1.0
+	filtered = arr[mask] if mask.any() else arr
+	
+	# Apply smart cutoff if enabled
+	cut_phrase = ""
+	if enable_smart_cutoff and use_smart_cutoff and mask.any() and 0 < smart_cutoff < 100:
+		pct = max(0.0, min(100.0, smart_cutoff))
+		current = filtered
+		for _ in range(5):  # max iterations
+			cur_mask = ~np.isnan(current)
+			if not cur_mask.any():
+				break
+			cur_values = current[cur_mask]
+			cur_max = float(cur_values.max())
+			p99 = float(np.percentile(cur_values, pct))
+			p50 = float(np.percentile(cur_values, 50))
+			if (cur_max - p99) > (p99 - p50):
+				current = current[current <= p99]
+			else:
+				break
+		filtered = current
+		if len(filtered) < len(arr[mask]):
+			cut_phrase = f" (smart cutoff at {pct:.2f}% | original range:{orig_min:.3f}-{orig_max:.3f})"
+		else:
+			cut_phrase = f" (no cutoff | original range:{orig_min:.3f}-{orig_max:.3f})"
+	elif mask.any():
+		cut_phrase = f" (original range:{orig_min:.3f}-{orig_max:.3f})"
+	
+	# Create plot with fixed range
+	set_plot_style()
+	fig, ax = plt.subplots(figsize=(8, 5))
+	
+	# Plot histogram with forced auto bins
+	sns.histplot(filtered, bins="auto", kde=True, color="#BC4B51", ax=ax)
+	
+	# Fix X-axis range to 0-1
+	ax.set_xlim(0, 1)
+	ax.set_xlabel("Missing rate")
+	ax.set_ylabel("Count")
+	
+	# Set title with cutoff information
+	if cut_phrase:
+		ax.set_title(f"{title}\n{cut_phrase.strip()}")
+	else:
+		ax.set_title(title)
+	
+	fig.tight_layout()
+	return save_figure(fig, output_path)
 
 
 def plot_allele_count_pie(
@@ -300,17 +367,29 @@ def plot_mac_distribution(
 	bins: int = 60,
 	smart_cutoff: float = 99.5,
 	enable_smart_cutoff: bool = True,
+	use_smart_cutoff: bool = True,
+	min_value: int = 0,
 ) -> Optional[plt.Figure]:
 	"""Histogram of MAC values for filtered sites."""
+	values = np.asarray(mac, dtype=float)
+	
+	# Apply minimum value filtering
+	if min_value > 0:
+		orig_count = len(values[~np.isnan(values)])
+		values = values[values >= min_value]
+		filtered_count = len(values[~np.isnan(values)])
+		title_suffix = f" (MAC ≥ {min_value}, {filtered_count}/{orig_count} sites)"
+		title = title + title_suffix
+	
 	return hist_plot(
-		mac,
+		values,
 		output_path=output_path,
 		title=title,
 		xlabel="MAC (second-most allele count)",
 		bins=bins,
 		color="#455A64",
 		smart_cutoff=smart_cutoff,
-		enable_smart_cutoff=enable_smart_cutoff,
+		enable_smart_cutoff=enable_smart_cutoff and use_smart_cutoff,
 	)
 
 
@@ -322,16 +401,28 @@ def plot_maf_distribution(
 	bins: int = 60,
 	smart_cutoff: float = 99.5,
 	enable_smart_cutoff: bool = True,
+	use_smart_cutoff: bool = True,
+	min_value: float = 0.0,
 ) -> Optional[plt.Figure]:
 	"""Histogram of MAF values for filtered sites."""
+	values = np.asarray(maf, dtype=float)
+	
+	# Apply minimum value filtering
+	if min_value > 0.0:
+		orig_count = len(values[~np.isnan(values)])
+		values = values[values >= min_value]
+		filtered_count = len(values[~np.isnan(values)])
+		title_suffix = f" (MAF ≥ {min_value:.3f}, {filtered_count}/{orig_count} sites)"
+		title = title + title_suffix
+	
 	return hist_plot(
-		maf,
+		values,
 		output_path=output_path,
 		title=title,
 		xlabel="MAF (second-most allele frequency)",
 		bins=bins,
 		color="#00796B",
 		smart_cutoff=smart_cutoff,
-		enable_smart_cutoff=enable_smart_cutoff,
+		enable_smart_cutoff=enable_smart_cutoff and use_smart_cutoff,
 	)
 

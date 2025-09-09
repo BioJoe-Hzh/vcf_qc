@@ -152,16 +152,27 @@ def plot_vaf_vs_depth_het(
 	enable_smart_cutoff: bool = True,
 	apply_on: str = "both",
 	point_alpha: float = 0.2,
+	show_expected_vaf: bool = True,
 ) -> Optional[plt.Figure]:
-	"""4.11 Joint scatter of VAF vs depth restricted to heterozygous genotypes."""
+	"""4.11 Joint scatter of VAF vs depth restricted to heterozygous genotypes.
+	
+	For heterozygous genotypes, VAF should theoretically be around 0.5.
+	This plot helps identify allelic bias or other technical artifacts.
+	"""
 	if not {vaf_col, depth_col}.issubset(data.columns):
 		raise ValueError("DataFrame must contain VAF and Depth columns")
-	return joint_scatter(
+	
+	# Add sample count to title
+	n_samples = len(data)
+	enhanced_title = f"{title}\nn = {n_samples:,} heterozygous genotypes"
+	
+	# Create the base scatter plot
+	fig = joint_scatter(
 		data.rename(columns={vaf_col: "VAF", depth_col: "Depth"}),
 		x="Depth",
 		y="VAF",
-		title=title,
-		output_path=output_path,
+		title=enhanced_title,
+		output_path=None,  # We'll handle saving manually to add reference line
 		xlabel="Depth",
 		ylabel="VAF",
 		color="#6A1B9A",
@@ -170,6 +181,24 @@ def plot_vaf_vs_depth_het(
 		apply_on=apply_on,
 		alpha=point_alpha,
 	)
+	
+	if fig is not None and show_expected_vaf:
+		# Add horizontal line at VAF=0.5 (expected for heterozygotes)
+		ax = fig.axes[0]  # Main scatter plot axis
+		ax.axhline(y=0.5, color='red', linestyle='--', alpha=0.8, linewidth=2, 
+				   label='Expected VAF=0.5')
+		ax.legend(loc='upper right')
+		
+		# Add some statistics text
+		vaf_values = data[vaf_col].dropna()
+		if len(vaf_values) > 0:
+			mean_vaf = vaf_values.mean()
+			median_vaf = vaf_values.median()
+			stats_text = f'Mean VAF: {mean_vaf:.3f}\nMedian VAF: {median_vaf:.3f}'
+			ax.text(0.02, 0.98, stats_text, transform=ax.transAxes, 
+					verticalalignment='top', bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+	
+	return save_figure(fig, output_path)
 
 
 def plot_alt_count_vs_depth_het(
@@ -183,16 +212,27 @@ def plot_alt_count_vs_depth_het(
 	enable_smart_cutoff: bool = True,
 	apply_on: str = "both",
 	point_alpha: float = 0.2,
+	show_expected_ratio: bool = True,
 ) -> Optional[plt.Figure]:
-	"""4.12 Joint scatter of ALT read count vs depth (heterozygous genotypes)."""
+	"""4.12 Joint scatter of ALT read count vs depth (heterozygous genotypes).
+	
+	For heterozygous genotypes, ALT count should theoretically be around 50% of total depth.
+	This plot helps identify allelic bias in read coverage.
+	"""
 	if not {alt_count_col, depth_col}.issubset(data.columns):
 		raise ValueError("DataFrame must contain ALT_Count and Depth columns")
-	return joint_scatter(
+	
+	# Add sample count to title
+	n_samples = len(data)
+	enhanced_title = f"{title}\nn = {n_samples:,} heterozygous genotypes"
+	
+	# Create the base scatter plot
+	fig = joint_scatter(
 		data.rename(columns={alt_count_col: "ALT_Count", depth_col: "Depth"}),
 		x="Depth",
 		y="ALT_Count",
-		title=title,
-		output_path=output_path,
+		title=enhanced_title,
+		output_path=None,  # We'll handle saving manually to add reference line
 		xlabel="Depth",
 		ylabel="ALT read count",
 		color="#C62828",
@@ -201,4 +241,33 @@ def plot_alt_count_vs_depth_het(
 		apply_on=apply_on,
 		alpha=point_alpha,
 	)
+	
+	if fig is not None and show_expected_ratio:
+		# Add diagonal line showing expected 50% ratio (ALT_Count = 0.5 * Depth)
+		ax = fig.axes[0]  # Main scatter plot axis
+		
+		# Get the current axis limits for the reference line
+		xlim = ax.get_xlim()
+		x_range = np.linspace(xlim[0], xlim[1], 100)
+		y_expected = 0.5 * x_range
+		
+		ax.plot(x_range, y_expected, 'r--', alpha=0.8, linewidth=2, 
+				label='Expected ALT=0.5×Depth')
+		ax.legend(loc='upper left')
+		
+		# Add some statistics text
+		alt_values = data[alt_count_col].dropna()
+		depth_values = data[depth_col].dropna()
+		if len(alt_values) > 0 and len(depth_values) > 0:
+			# Calculate actual ALT/Depth ratio
+			combined_data = data[[alt_count_col, depth_col]].dropna()
+			if len(combined_data) > 0:
+				actual_ratios = combined_data[alt_count_col] / combined_data[depth_col]
+				mean_ratio = actual_ratios.mean()
+				median_ratio = actual_ratios.median()
+				stats_text = f'Mean ALT/Depth: {mean_ratio:.3f}\nMedian ALT/Depth: {median_ratio:.3f}'
+				ax.text(0.02, 0.98, stats_text, transform=ax.transAxes, 
+						verticalalignment='top', bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+	
+	return save_figure(fig, output_path)
 

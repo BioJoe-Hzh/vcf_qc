@@ -41,16 +41,71 @@ def filter_site_metrics(
     min_qual: Optional[float] = None,
     max_missing: Optional[float] = None,
     min_depth: Optional[int] = None,
+    max_depth: Optional[int] = None,
     min_mac: Optional[int] = None,
+    min_qd: Optional[float] = None,
+    verbose: bool = True,
 ) -> pd.DataFrame:
-    """Apply simple QC thresholds; returns filtered copy (non-destructive)."""
+    """Apply simple QC thresholds; returns filtered copy with detailed filtering report."""
+    if verbose:
+        print(f"\n🔍 Site-level filtering report:")
+        print(f"   Initial sites: {len(df):,}")
+    
     out = df.copy()
+    filter_steps = []
+    
+    # Apply filters one by one and track the effect
     if min_qual is not None and "QUAL" in out.columns:
+        before = len(out)
         out = out[out["QUAL"] >= min_qual]
+        after = len(out)
+        removed = before - after
+        filter_steps.append(f"   QUAL >= {min_qual}: removed {removed:,} sites, {after:,} remaining")
+    
     if max_missing is not None and "MissingRate" in out.columns:
+        before = len(out)
         out = out[out["MissingRate"] <= max_missing]
+        after = len(out)
+        removed = before - after
+        filter_steps.append(f"   Missing rate <= {max_missing}: removed {removed:,} sites, {after:,} remaining")
+    
     if min_depth is not None and "MeanDepth" in out.columns:
+        before = len(out)
         out = out[out["MeanDepth"] >= min_depth]
+        after = len(out)
+        removed = before - after
+        filter_steps.append(f"   Mean depth >= {min_depth}: removed {removed:,} sites, {after:,} remaining")
+    
+    if max_depth is not None and "MeanDepth" in out.columns:
+        before = len(out)
+        out = out[out["MeanDepth"] <= max_depth]
+        after = len(out)
+        removed = before - after
+        filter_steps.append(f"   Mean depth <= {max_depth}: removed {removed:,} sites, {after:,} remaining")
+    
     if min_mac is not None and "MAC" in out.columns:
+        before = len(out)
         out = out[out["MAC"] >= min_mac]
+        after = len(out)
+        removed = before - after
+        filter_steps.append(f"   MAC >= {min_mac}: removed {removed:,} sites, {after:,} remaining")
+    
+    if min_qd is not None and "QD" in out.columns:
+        before = len(out)
+        out = out[out["QD"] >= min_qd]
+        after = len(out)
+        removed = before - after
+        filter_steps.append(f"   QD >= {min_qd}: removed {removed:,} sites, {after:,} remaining")
+    
+    if verbose:
+        for step in filter_steps:
+            print(step)
+        
+        total_removed = len(df) - len(out)
+        retention_rate = (len(out) / len(df)) * 100 if len(df) > 0 else 0
+        print(f"Final filtering summary:")
+        print(f"   Total sites removed: {total_removed:,} ({100-retention_rate:.1f}%)")
+        print(f"   Sites retained: {len(out):,} ({retention_rate:.1f}%)")
+        print()
+    
     return out.reset_index(drop=True)
