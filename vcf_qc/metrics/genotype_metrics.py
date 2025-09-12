@@ -19,7 +19,7 @@ def genotype_complete_table(reader: SimpleVCFReader, compute_gq_from_pl: bool = 
     Columns: Sample, Chrom, Pos, GT, GQ, Depth, ALT_Count, REF_Count, VAF
     """
     rows = []
-    for rec in reader.iterate_gq_depth(compute_gq_from_pl=compute_gq_from_pl):
+    for rec in reader.iterate_genotypes(compute_gq_from_pl=compute_gq_from_pl):
         rows.append(rec)
     
     df = pd.DataFrame(rows)
